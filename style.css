@@ -279,3 +279,11 @@ html, body {
 #app[data-theme="sunset"] { --accent: #f97316; --accent-dark: #ea580c; }
 #app[data-theme="rose"] { --accent: #f472b6; --accent-dark: #db2777; }
 #app[data-theme="violet"] { --accent: #a78bfa; --accent-dark: #7c3aed; }
+
+/* Diagnostic line: shows the live model being tried and the last error,
+   persistently (toasts fade after 2s, so a failure reason would vanish). */
+.debug-line {
+  min-height: 18px; margin: 6px auto 0; max-width: 92%;
+  font-size: 12px; line-height: 1.45; color: var(--muted);
+  word-break: break-word; text-align: center;
+}

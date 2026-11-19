@@ -579,7 +579,10 @@ class LiveSession {
     try {
       if (!isReconnect) AndroidBridge.requestAudioPermission();
       if (!(await this.audioStreamer.initialize())) {
-        if (!isReconnect && this.audioStreamer.micError) this.fail(this.audioStreamer.micError);
+        if (!isReconnect && this.audioStreamer.micError) {
+          this.fail(this.audioStreamer.micError);
+          if (this.callbacks.onDebug) this.callbacks.onDebug('Mic: ' + this.audioStreamer.micError);
+        }
       }
       if (this.userInitiatedDisconnect) { this.isConnectingNow = false; return; }
 
@@ -606,6 +609,10 @@ class LiveSession {
         config.sessionResumption = { handle: this.latestResumeHandle };
       }
 
+      if (this.callbacks.onDebug) {
+        this.callbacks.onDebug('Connecting: ' + LIVE_MODELS[this.modelIndex] +
+          (isReconnect ? ' (retry ' + this.reconnectAttempts + ')' : ''));
+      }
       const session = await new GoogleGenAI({ apiKey }).live.connect({
         model: LIVE_MODELS[this.modelIndex],
         config,
@@ -625,6 +632,7 @@ class LiveSession {
               this.reconnectAttempts = 0;
               this.lastErrorReason = '';
               this.clearReconnectNotice();
+              if (this.callbacks.onDebug) this.callbacks.onDebug('Connected: ' + LIVE_MODELS[this.modelIndex]);
               this.setStatus(this.audioStreamer.isPlayingChunk ? 'speaking' : 'listening');
               if (!isReconnect) {
                 AndroidBridge.showToast('Rox is listening...');
@@ -684,6 +692,7 @@ class LiveSession {
             const detail = (event && (event.message || event.error)) || 'Live connection error';
             console.warn('[LiveSession] Gemini Live error:', detail);
             this.lastErrorReason = String(detail);
+            if (this.callbacks.onDebug) this.callbacks.onDebug('Live error: ' + this.lastErrorReason);
           },
           onclose: (event) => {
             if (seq !== this.activeWsSeq) return;
@@ -701,7 +710,23 @@ class LiveSession {
               // Died before setup completed (usually a bad key). Say so
               // plainly instead of reconnecting forever; the client
               // treats key errors as fatal.
-              this.lastErrorReason = reason || 'Live session closed before it was ready — check your API key';
+              this.lastErrorReason = this.lastErrorReason || reason ||
+                'Live session closed before it was ready — check your API key';
+              if (this.callbacks.onDebug) this.callbacks.onDebug('Closed: ' + this.lastErrorReason);
+              // Model retired? Rotate to the next model instead of giving
+              // up — this path returns early, so the failover must live
+              // here too, not only in handleUnexpectedDisconnect.
+              if (this.isModelNotFound(this.lastErrorReason) && this.modelIndex < LIVE_MODELS.length - 1) {
+                this.modelIndex++;
+                this.reconnectAttempts = 0;
+                this.fail('Model nahi mila — agla model try kar raha hoon...');
+                if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+                this.reconnectTimer = setTimeout(() => {
+                  this.reconnectTimer = null;
+                  if (!this.userInitiatedDisconnect) this.connectInternal(true);
+                }, 800);
+                return;
+              }
               this.disconnect();
               this.fail(this.lastErrorReason);
               return;
@@ -718,6 +743,7 @@ class LiveSession {
       this.closeLiveSessionOnly();
       this.isConnectingNow = false;
       this.lastErrorReason = message;
+      if (this.callbacks.onDebug) this.callbacks.onDebug('Connect failed: ' + message);
       if (this.userInitiatedDisconnect) {
         this.disconnect();
         this.fail(this.lastErrorReason);
@@ -1037,6 +1063,7 @@ const els = {
   voiceMale: $('voiceMale'),
   voiceFemale: $('voiceFemale'),
   toast: $('toast'),
+  debugLine: $('debugLine'),
 };
 
 let toastTimer = null;
@@ -1046,6 +1073,12 @@ function showToast(text) {
   els.toast.classList.add('show');
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2000);
+}
+
+/* Persistent diagnostic line under the status: toasts fade after 2s,
+   so without this the real failure reason vanishes before a screenshot. */
+function setDebug(text) {
+  if (els.debugLine) els.debugLine.textContent = text || '';
 }
 
 const STATUS_LABELS = {
@@ -1069,7 +1102,10 @@ const session = new LiveSession({
     els.sendTextBtn.disabled = status === 'disconnected';
   },
   onError(message) {
-    if (message) showToast(message);
+    if (message) { showToast(message); setDebug(message); }
+  },
+  onDebug(text) {
+    setDebug(text);
   },
   onText(text) {
     els.transcript.style.display = 'block';
