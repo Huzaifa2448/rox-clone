@@ -70,7 +70,7 @@ function cleanApiKey() {
 /* system instruction matches the relay server's, so both modes        */
 /* behave the same.                                                    */
 /* ------------------------------------------------------------------ */
-const LIVE_MODEL = 'gemini-live-2.5-flash-preview';
+const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 function functionDeclaration(name, description, properties, required) {
   return { name, description, parameters: { type: 'OBJECT', properties, required: required || [] } };
