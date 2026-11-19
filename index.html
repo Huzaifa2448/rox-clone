@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Rox Assistant</title>
+  <meta name="description" content="Real-time voice-to-voice assistant with a confident, witty, and charming personality powered by Gemini Live audio streaming." />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app" data-theme="default">
+    <div class="bg-glow"></div>
+
+    <div class="top-bar">
+      <div class="brand">Rox<span>.</span></div>
+      <button class="icon-btn" id="settingsBtn" title="Profile &amp; settings" aria-label="Profile and settings">&#9881;</button>
+    </div>
+
+    <div class="stage">
+      <div class="orb-wrap" id="orbWrap">
+        <div class="orb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+          </svg>
+        </div>
+      </div>
+      <h1 id="statusText">Tap the mic to start</h1>
+      <p id="statusSub">Rox Assistant</p>
+      <p id="reactionCaption"></p>
+      <div id="transcript"></div>
+    </div>
+
+    <div class="controls">
+      <button class="round-btn" id="muteBtn" title="Mute microphone" aria-label="Mute microphone">&#128263;</button>
+      <button class="mic-btn" id="micBtn" title="Tap to start" aria-label="Tap the mic to start">&#127908;</button>
+      <button class="round-btn" id="themeBtn" title="Change atmosphere" aria-label="Change atmosphere">&#127912;</button>
+    </div>
+
+    <div class="text-row">
+      <input id="textInput" type="text" placeholder="Type a message to Rox..." autocomplete="off" />
+      <button id="sendTextBtn" disabled>Send</button>
+    </div>
+
+    <div class="footer">Created by Huzaifa</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="panel-overlay" id="panelOverlay">
+    <div class="panel">
+      <h2>Profile</h2>
+      <p class="hint">Rox remembers your name and notes, and uses your own Gemini API key
+        for the live voice session. Your key goes straight from this page to
+        Google Gemini — there is no server in between. Nothing is sent
+        anywhere until you tap the mic.</p>
+
+      <div class="field">
+        <label for="firstName">First name</label>
+        <input id="firstName" type="text" placeholder="Huzaifa" />
+      </div>
+      <div class="field">
+        <label for="lastName">Last name</label>
+        <input id="lastName" type="text" placeholder="" />
+      </div>
+      <div class="field">
+        <label for="memory">Memory — things Rox should remember about you</label>
+        <textarea id="memory" placeholder="e.g. I am a pre-medical student, I like cricket..."></textarea>
+      </div>
+      <div class="field">
+        <label for="apiKey">Gemini API key</label>
+        <input id="apiKey" type="password" placeholder="Paste your Gemini API key" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>Voice</label>
+        <div class="voice-pick">
+          <button type="button" id="voiceMale">Male<small>Puck</small></button>
+          <button type="button" id="voiceFemale">Female<small>Kore</small></button>
+        </div>
+      </div>
+
+      <div class="panel-actions">
+        <button class="btn-ghost" id="panelCloseBtn">Close</button>
+        <button class="btn-primary" id="panelSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
