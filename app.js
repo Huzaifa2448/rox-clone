@@ -70,7 +70,15 @@ function cleanApiKey() {
 /* system instruction matches the relay server's, so both modes        */
 /* behave the same.                                                    */
 /* ------------------------------------------------------------------ */
-const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
+/* Live models, newest first. Google retires preview model names without
+   warning (yehi 'not found' error ki wajah thi), so the session tries
+   each one in turn until one connects — fast failover, no rebuild. */
+const LIVE_MODELS = [
+  'gemini-2.5-flash-native-audio-preview-12-2025',
+  'gemini-2.5-flash-preview-native-audio-dialog',
+  'gemini-3.1-flash-live-preview',
+  'gemini-live-2.5-flash-preview',
+];
 
 function functionDeclaration(name, description, properties, required) {
   return { name, description, parameters: { type: 'OBJECT', properties, required: required || [] } };
@@ -475,6 +483,7 @@ class LiveSession {
     this.liveClosedByUs = false;
     this.activeWsSeq = 0;
     this.reconnectAttempts = 0;
+    this.modelIndex = 0;
     this.reconnectTimer = null;
     this.reconnectNoticeTimer = null;
     this.reconnectStartedAt = null;
@@ -545,6 +554,7 @@ class LiveSession {
     this.clearResumeHandle();
     this.userInitiatedDisconnect = false;
     this.reconnectAttempts = 0;
+    this.modelIndex = 0;
     this.lastErrorReason = '';
     this.clearReconnectNotice();
     this.reconnectTimer && clearTimeout(this.reconnectTimer);
@@ -597,7 +607,7 @@ class LiveSession {
       }
 
       const session = await new GoogleGenAI({ apiKey }).live.connect({
-        model: LIVE_MODEL,
+        model: LIVE_MODELS[this.modelIndex],
         config,
         callbacks: {
           onopen: () => {
@@ -717,6 +727,11 @@ class LiveSession {
     }
   }
 
+  isModelNotFound(reason) {
+    const r = (reason || '').toLowerCase();
+    return r.includes('not found') && r.includes('model');
+  }
+
   isFatalError(reason) {
     const r = (reason || '').toLowerCase();
     return r.includes('api key') || r.includes('api_key') || r.includes('invalid') ||
@@ -729,6 +744,25 @@ class LiveSession {
       const reason = this.lastErrorReason;
       this.disconnect();
       this.fail(reason);
+      return;
+    }
+    // Model retired/renamed by Google: try the next model fast (under 1s),
+    // instead of retrying a dead name forever.
+    if (this.lastErrorReason && this.isModelNotFound(this.lastErrorReason)) {
+      if (this.modelIndex < LIVE_MODELS.length - 1) {
+        this.modelIndex++;
+        this.reconnectAttempts = 0;
+        console.log('[LiveSession] Model not found, trying ' + LIVE_MODELS[this.modelIndex]);
+        this.fail('Model nahi mila — agla model try kar raha hoon...');
+        if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = null;
+          if (!this.userInitiatedDisconnect) this.connectInternal(true);
+        }, 800);
+        return;
+      }
+      this.disconnect();
+      this.fail('Koi Live model nahi mila — API key check karein');
       return;
     }
     if (this.connectionWatchdog) { clearTimeout(this.connectionWatchdog); this.connectionWatchdog = null; }
